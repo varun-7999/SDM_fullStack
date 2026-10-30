@@ -1,0 +1,17 @@
+{
+  "name": "sdm-week-1",
+  "version": "1.0.0",
+  "description": "A small Hello World Node.js CLI.",
+  "type": "module",
+  "bin": {
+    "hello-world": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
