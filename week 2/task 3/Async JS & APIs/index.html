@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A simple weather dashboard powered by Open-Meteo.">
+  <title>Atmos | Weather</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page-shell">
+    <section class="weather-app" aria-labelledby="app-title">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="Atmos home">atmos<span>.</span></a>
+        <p class="last-updated" id="last-updated">Live weather, worldwide</p>
+      </header>
+
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Forecast at a glance</p>
+          <h1 id="app-title">Know your<br><em>sky.</em></h1>
+        </div>
+        <form class="search-form" id="search-form">
+          <label class="sr-only" for="city-input">Search for a city</label>
+          <input id="city-input" type="search" placeholder="Search a city..." autocomplete="off" required>
+          <button type="submit" aria-label="Search weather">↗</button>
+        </form>
+      </div>
+
+      <div class="status" id="status" role="status" aria-live="polite" hidden>
+        <span class="spinner"></span><span id="status-message">Finding your weather...</span>
+      </div>
+      <div class="error-message" id="error-message" role="alert" hidden></div>
+
+      <section class="weather-content" id="weather-content" aria-live="polite" hidden>
+        <div class="current-weather">
+          <div class="location">
+            <p class="eyebrow">Currently in</p>
+            <h2 id="location-name">—</h2>
+            <p id="location-detail">—</p>
+          </div>
+          <div class="current-reading">
+            <span class="weather-icon" id="current-icon" aria-hidden="true">☀</span>
+            <div>
+              <strong id="current-temperature">—</strong><span class="degrees">°</span>
+              <p id="current-condition">—</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="details-grid">
+          <div><span>Feels like</span><strong id="feels-like">—</strong></div>
+          <div><span>Humidity</span><strong id="humidity">—</strong></div>
+          <div><span>Wind</span><strong id="wind-speed">—</strong></div>
+          <div><span>Sunrise</span><strong id="sunrise">—</strong></div>
+        </div>
+
+        <div class="forecast-heading">
+          <div><p class="eyebrow">The next few days</p><h2>Forecast</h2></div>
+          <span id="forecast-range">—</span>
+        </div>
+        <div class="forecast-grid" id="forecast-grid"></div>
+      </section>
+
+      <div class="welcome-state" id="welcome-state">
+        <span aria-hidden="true">✳</span>
+        <p>Search for a city to see<br>what the sky has in store.</p>
+      </div>
+
+      <footer class="footer"><span>Powered by <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a></span><span>No API key required</span></footer>
+    </section>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>

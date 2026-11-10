@@ -1,103 +1,125 @@
-const STORAGE_KEY = "daylist-tasks";
-let tasks = loadTasks();
-let activeFilter = "all";
+const form = document.querySelector("#search-form");
+const cityInput = document.querySelector("#city-input");
+const status = document.querySelector("#status");
+const statusMessage = document.querySelector("#status-message");
+const errorMessage = document.querySelector("#error-message");
+const weatherContent = document.querySelector("#weather-content");
+const welcomeState = document.querySelector("#welcome-state");
 
-const taskList = document.querySelector("#task-list");
-const emptyState = document.querySelector("#empty-state");
-const emptyMessage = document.querySelector("#empty-message");
-const addForm = document.querySelector("#add-form");
-const taskInput = document.querySelector("#task-input");
+const weatherCodes = {
+  0: ["Clear sky", "☀"], 1: ["Mainly clear", "🌤"], 2: ["Partly cloudy", "⛅"],
+  3: ["Overcast", "☁"], 45: ["Foggy", "🌫"], 48: ["Rime fog", "🌫"],
+  51: ["Light drizzle", "🌦"], 53: ["Drizzle", "🌦"], 55: ["Heavy drizzle", "🌧"],
+  61: ["Light rain", "🌦"], 63: ["Rain", "🌧"], 65: ["Heavy rain", "🌧"],
+  71: ["Light snow", "🌨"], 73: ["Snow", "❄"], 75: ["Heavy snow", "❄"],
+  80: ["Rain showers", "🌦"], 81: ["Rain showers", "🌧"], 82: ["Heavy showers", "🌧"],
+  95: ["Thunderstorm", "⛈"], 96: ["Thunderstorm", "⛈"], 99: ["Thunderstorm", "⛈"]
+};
 
-function loadTasks() {
+function getWeatherDescription(code) {
+  return weatherCodes[code] || ["Unknown conditions", "·"];
+}
+
+function setLoading(isLoading, message = "Finding your weather...") {
+  status.hidden = !isLoading;
+  statusMessage.textContent = message;
+  form.querySelector("button").disabled = isLoading;
+}
+
+function showError(message) {
+  errorMessage.textContent = message;
+  errorMessage.hidden = false;
+  weatherContent.hidden = true;
+  welcomeState.hidden = true;
+}
+
+function formatTime(value) {
+  return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDate(value, options) {
+  return new Date(`${value}T12:00:00`).toLocaleDateString([], options);
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("The weather service is unavailable right now.");
+  return response.json();
+}
+
+async function searchWeather(city) {
+  setLoading(true, `Looking up ${city}...`);
+  errorMessage.hidden = true;
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved) ? saved : [];
-  } catch {
-    return [];
+    const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
+    const locationData = await fetchJson(geocodeUrl);
+    if (!locationData.results?.length) throw new Error(`We couldn't find "${city}". Try a nearby city.`);
+    const location = locationData.results[0];
+    setLoading(true, `Loading weather for ${location.name}...`);
+    const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.latitude}&longitude=${location.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise&temperature_unit=celsius&wind_speed_unit=kmh&timezone=auto&forecast_days=5`;
+    const weather = await fetchJson(weatherUrl);
+    renderWeather(location, weather);
+  } catch (error) {
+    showError(error.message || "Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
   }
 }
 
-function saveTasks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-}
+function renderWeather(location, weather) {
+  const current = weather.current;
+  const [condition, icon] = getWeatherDescription(current.weather_code);
+  document.querySelector("#location-name").textContent = location.name;
+  document.querySelector("#location-detail").textContent = [location.admin1, location.country].filter(Boolean).join(" · ");
+  document.querySelector("#current-icon").textContent = icon;
+  document.querySelector("#current-temperature").textContent = Math.round(current.temperature_2m);
+  document.querySelector("#current-condition").textContent = condition;
+  document.querySelector("#feels-like").textContent = `${Math.round(current.apparent_temperature)}°`;
+  document.querySelector("#humidity").textContent = `${current.relative_humidity_2m}%`;
+  document.querySelector("#wind-speed").textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+  document.querySelector("#sunrise").textContent = formatTime(weather.daily.sunrise[0]);
+  document.querySelector("#forecast-range").textContent = `${formatDate(weather.daily.time[0], { month: "short", day: "numeric" })} — ${formatDate(weather.daily.time[4], { month: "short", day: "numeric" })}`;
 
-function visibleTasks() {
-  if (activeFilter === "active") return tasks.filter((task) => !task.completed);
-  if (activeFilter === "completed") return tasks.filter((task) => task.completed);
-  return tasks;
-}
-
-function render() {
-  taskList.replaceChildren();
-  visibleTasks().forEach((task) => {
-    const item = document.createElement("li");
-    item.className = `task-item${task.completed ? " is-complete" : ""}`;
-    item.innerHTML = `
-      <input class="task-check" type="checkbox" ${task.completed ? "checked" : ""} aria-label="Mark ${escapeHtml(task.text)} as complete">
-      <span class="task-label"></span>
-      <button class="delete-button" type="button" aria-label="Delete ${escapeHtml(task.text)}">×</button>
-    `;
-    item.querySelector(".task-label").textContent = task.text;
-    item.querySelector(".task-check").addEventListener("change", () => {
-      task.completed = !task.completed;
-      saveTasks();
-      render();
-    });
-    item.querySelector(".delete-button").addEventListener("click", () => {
-      tasks = tasks.filter((candidate) => candidate.id !== task.id);
-      saveTasks();
-      render();
-    });
-    taskList.append(item);
+  const forecastGrid = document.querySelector("#forecast-grid");
+  forecastGrid.replaceChildren();
+  weather.daily.time.forEach((date, index) => {
+    const [dayCondition, dayIcon] = getWeatherDescription(weather.daily.weather_code[index]);
+    const card = document.createElement("article");
+    card.className = `forecast-card${index === 0 ? " today" : ""}`;
+    card.innerHTML = `<p>${index === 0 ? "Today" : formatDate(date, { weekday: "short" })}</p><span class="forecast-icon" aria-label="${dayCondition}">${dayIcon}</span><strong>${Math.round(weather.daily.temperature_2m_max[index])}°</strong><small>${Math.round(weather.daily.temperature_2m_min[index])}°</small>`;
+    forecastGrid.append(card);
   });
-
-  const completed = tasks.filter((task) => task.completed).length;
-  const open = tasks.length - completed;
-  document.querySelector('[data-count="all"]').textContent = tasks.length;
-  document.querySelector('[data-count="active"]').textContent = open;
-  document.querySelector('[data-count="completed"]').textContent = completed;
-  document.querySelector("#task-summary").textContent = `${open} ${open === 1 ? "task" : "tasks"} left`;
-  document.querySelector("#clear-completed").disabled = completed === 0;
-  emptyState.hidden = visibleTasks().length > 0;
-  if (activeFilter === "completed") emptyMessage.innerHTML = "No completed tasks yet.<br>Keep going.";
-  else if (activeFilter === "active") emptyMessage.innerHTML = "You’re all caught up.<br>Nice work.";
-  else emptyMessage.innerHTML = "Your list is clear.<br>Add something worth doing.";
+  document.querySelector("#last-updated").textContent = `Updated ${formatTime(current.time)}`;
+  weatherContent.hidden = false;
+  welcomeState.hidden = true;
 }
 
-function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-  }[character]));
-}
-
-addForm.addEventListener("submit", (event) => {
+form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const text = taskInput.value.trim();
-  if (!text) return;
-  tasks.unshift({ id: crypto.randomUUID(), text, completed: false });
-  saveTasks();
-  taskInput.value = "";
-  activeFilter = "all";
-  document.querySelectorAll(".filter-button").forEach((button) => button.classList.toggle("is-active", button.dataset.filter === activeFilter));
-  render();
-  taskInput.focus();
+  const city = cityInput.value.trim();
+  if (city) searchWeather(city);
 });
 
-document.querySelectorAll(".filter-button").forEach((button) => {
-  button.addEventListener("click", () => {
-    activeFilter = button.dataset.filter;
-    document.querySelectorAll(".filter-button").forEach((candidate) => candidate.classList.toggle("is-active", candidate === button));
-    render();
-  });
-});
+const initialWeather = {
+  current: {
+    time: new Date().toISOString(),
+    temperature_2m: 22,
+    relative_humidity_2m: 58,
+    apparent_temperature: 23,
+    weather_code: 1,
+    wind_speed_10m: 11
+  },
+  daily: {
+    time: ["2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14"],
+    weather_code: [1, 2, 0, 3, 61],
+    temperature_2m_max: [25, 24, 26, 23, 21],
+    temperature_2m_min: [17, 16, 18, 15, 14],
+    sunrise: ["2026-11-10T06:42:00"]
+  }
+};
 
-document.querySelector("#clear-completed").addEventListener("click", () => {
-  tasks = tasks.filter((task) => !task.completed);
-  saveTasks();
-  render();
-});
-
-const date = new Date();
-document.querySelector("#current-day").textContent = date.toLocaleDateString(undefined, { weekday: "long" });
-document.querySelector("#current-date").textContent = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-render();
+renderWeather({
+  name: "Lisbon",
+  admin1: "Lisbon",
+  country: "Portugal"
+}, initialWeather);
