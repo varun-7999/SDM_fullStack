@@ -1,0 +1,13 @@
+import { StrictMode, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from "react-router-dom";
+import "./styles.css";
+
+const notes = [{ id: "morning", title: "Start gently", body: "A clear beginning makes space for better work." }, { id: "focus", title: "Protect focus", body: "Choose one meaningful thing and give it your attention." }];
+function Layout({ children }) { return <main className="shell"><header><Link className="brand" to="/">orbit<span>.</span></Link><nav><NavLink to="/">Home</NavLink><NavLink to="/journal">Journal</NavLink><NavLink to="/about">About</NavLink></nav></header>{children}<footer>Built with React Router · {new Date().getFullYear()}</footer></main>; }
+function Home() { const [time, setTime] = useState(new Date()); useEffect(() => { const timer = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(timer); }, []); return <section className="hero"><p className="eyebrow">Home · useEffect + useState</p><h1>Make a little<br/><em>room to think.</em></h1><p className="lead">Three simple routes, one calm place to collect your thoughts.</p><div className="clock"><span>Local time</span><strong>{time.toLocaleTimeString()}</strong></div></section>; }
+function Journal() { return <section className="content"><p className="eyebrow">Journal · dynamic route links</p><h1>Field notes</h1><div className="note-grid">{notes.map((note) => <Link className="note" to={`/journal/${note.id}`} key={note.id}><span>↗</span><h2>{note.title}</h2><p>{note.body}</p></Link>)}</div></section>; }
+function Note() { const { id } = useParams(); const note = notes.find((item) => item.id === id); if (!note) return <section className="content"><h1>Note not found</h1><Link to="/journal">Back to journal</Link></section>; return <section className="content"><p className="eyebrow">Journal / {id}</p><h1>{note.title}</h1><p className="lead">{note.body}</p><Link to="/journal">← All notes</Link></section>; }
+function About() { return <section className="content"><p className="eyebrow">About</p><h1>Small tools,<br/><em>clear intent.</em></h1><p className="lead">This page demonstrates client-side routing with Home, Journal, and About views plus a dynamic journal detail route.</p></section>; }
+function App() { return <BrowserRouter><Layout><Routes><Route path="/" element={<Home/>}/><Route path="/journal" element={<Journal/>}/><Route path="/journal/:id" element={<Note/>}/><Route path="/about" element={<About/>}/></Routes></Layout></BrowserRouter>; }
+createRoot(document.getElementById("root")).render(<StrictMode><App/></StrictMode>);
